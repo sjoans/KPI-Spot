@@ -1,0 +1,1106 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SPOT · Dashboard Acreditaciones MEL</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500&family=Barlow+Condensed:wght@600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#0b1929;--surface:#162336;--card:#1c2f45;--card2:#243852;
+  --border:rgba(255,255,255,0.07);--border2:rgba(255,255,255,0.12);
+  --amber:#E8A020;--amber-d:#B87A10;--amber-l:rgba(232,160,32,0.15);
+  --green:#27AE60;--green-l:rgba(39,174,96,0.15);
+  --red:#E74C3C;--red-l:rgba(231,76,60,0.15);
+  --orange:#F39C12;--orange-l:rgba(243,156,18,0.15);
+  --blue:#3498DB;--blue-l:rgba(52,152,219,0.15);
+  --text:#E8EDF3;--text2:#8899AA;--text3:#4D6480;
+  --radius:8px;--radius-lg:12px;
+}
+body{background:var(--bg);color:var(--text);font-family:'Barlow',sans-serif;font-size:14px;min-height:100vh}
+/* HEADER */
+.header{background:var(--surface);border-bottom:1px solid var(--border);padding:0 2rem;height:60px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
+.logo{display:flex;align-items:center;gap:12px}
+.logo-badge{background:var(--amber);color:#000;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:13px;padding:3px 8px;border-radius:4px;letter-spacing:1px}
+.logo-title{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:18px;letter-spacing:0.5px}
+.logo-sub{font-size:11px;color:var(--text2);margin-top:1px}
+.header-right{display:flex;align-items:center;gap:12px}
+.file-name{font-size:12px;color:var(--text2);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:var(--radius);border:none;cursor:pointer;font-family:'Barlow',sans-serif;font-size:13px;font-weight:500;transition:all 0.15s}
+.btn-primary{background:var(--amber);color:#000}
+.btn-primary:hover{background:var(--amber-d)}
+.btn-outline{background:transparent;color:var(--text2);border:1px solid var(--border2)}
+.btn-outline:hover{background:var(--card);color:var(--text)}
+.btn-success{background:var(--green);color:#fff}
+.btn-success:hover{filter:brightness(1.1)}
+.btn-sm{padding:5px 10px;font-size:12px}
+/* UPLOAD ZONE */
+.upload-zone{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:calc(100vh - 60px);gap:20px;padding:2rem}
+.upload-card{background:var(--card);border:2px dashed var(--border2);border-radius:var(--radius-lg);padding:60px 80px;text-align:center;cursor:pointer;transition:all 0.2s;max-width:520px;width:100%}
+.upload-card:hover,.upload-card.drag-over{border-color:var(--amber);background:var(--amber-l)}
+.upload-icon{font-size:48px;margin-bottom:16px;opacity:0.6}
+.upload-title{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:22px;margin-bottom:8px}
+.upload-sub{color:var(--text2);font-size:13px}
+#fileInput{display:none}
+/* TABS */
+.tabs-nav{background:var(--surface);border-bottom:1px solid var(--border);display:flex;padding:0 2rem;gap:0;position:sticky;top:60px;z-index:99}
+.tab-btn{padding:14px 20px;background:transparent;border:none;color:var(--text2);cursor:pointer;font-family:'Barlow',sans-serif;font-size:13px;font-weight:500;border-bottom:2px solid transparent;transition:all 0.15s;white-space:nowrap}
+.tab-btn:hover{color:var(--text)}
+.tab-btn.active{color:var(--amber);border-bottom-color:var(--amber)}
+.tab-pane{display:none;padding:1.5rem 2rem;max-width:1400px;margin:0 auto}
+.tab-pane.active{display:block}
+/* KPI CARDS */
+.kpi-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:1rem;margin-bottom:1.5rem}
+.kpi-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1.25rem 1.5rem;position:relative;overflow:hidden}
+.kpi-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px}
+.kpi-card.amber::before{background:var(--amber)}
+.kpi-card.green::before{background:var(--green)}
+.kpi-card.blue::before{background:var(--blue)}
+.kpi-card.purple::before{background:#a855f7}
+.kpi-card.teal::before{background:#14b8a6}
+.kpi-card.red::before{background:var(--red)}
+.kpi-label{font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px}
+.kpi-value{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:36px;line-height:1}
+.kpi-sub{font-size:12px;color:var(--text2);margin-top:6px}
+/* CHART ROW */
+.chart-row{display:grid;grid-template-columns:280px 1fr;gap:1rem;margin-bottom:1.5rem}
+.chart-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1.25rem}
+.chart-title{font-family:'Barlow Condensed',sans-serif;font-weight:600;font-size:13px;text-transform:uppercase;letter-spacing:0.5px;color:var(--text2);margin-bottom:1rem}
+/* STATUS BADGE */
+.badge{display:inline-flex;align-items:center;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:500;letter-spacing:0.3px}
+.badge-green{background:var(--green-l);color:#4ade80}
+.badge-red{background:var(--red-l);color:#f87171}
+.badge-blue{background:var(--blue-l);color:#60a5fa}
+.badge-purple{background:rgba(168,85,247,0.15);color:#c084fc}
+.badge-teal{background:rgba(20,184,166,0.15);color:#2dd4bf}
+.badge-orange{background:var(--orange-l);color:#fbbf24}
+.badge-gray{background:rgba(100,120,140,0.2);color:var(--text2)}
+/* PROGRESS BAR */
+.progress-wrap{display:flex;align-items:center;gap:8px}
+.progress-bar-bg{flex:1;height:6px;background:rgba(255,255,255,0.08);border-radius:3px;overflow:hidden}
+.progress-bar-fill{height:100%;border-radius:3px;transition:width 0.3s}
+.progress-label{font-size:12px;font-weight:500;min-width:36px;text-align:right}
+/* ACCORDION / TABLE */
+.cargo-section{background:var(--card);border:1px solid var(--border);border-radius:var(--radius-lg);margin-bottom:0.75rem;overflow:hidden}
+.cargo-header{display:flex;align-items:center;justify-content:space-between;padding:0.9rem 1.25rem;cursor:pointer;user-select:none;transition:background 0.15s}
+.cargo-header:hover{background:var(--card2)}
+.cargo-name{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:16px;letter-spacing:0.3px}
+.cargo-meta{display:flex;gap:12px;align-items:center}
+.cargo-stats{display:flex;gap:8px}
+.chevron{font-size:12px;color:var(--text2);transition:transform 0.2s}
+.cargo-section.open .chevron{transform:rotate(90deg)}
+.cargo-body{display:none;border-top:1px solid var(--border)}
+.cargo-section.open .cargo-body{display:block}
+/* WORKER TABLE */
+.worker-table{width:100%;border-collapse:collapse}
+.worker-table thead tr{background:rgba(0,0,0,0.2)}
+.worker-table th{padding:8px 12px;text-align:left;font-size:11px;font-weight:500;color:var(--text2);text-transform:uppercase;letter-spacing:0.5px;border-bottom:1px solid var(--border);white-space:nowrap}
+.worker-table td{padding:9px 12px;border-bottom:1px solid var(--border);font-size:13px;vertical-align:middle}
+.worker-table tr:last-child td{border-bottom:none}
+.worker-table tr:hover td{background:rgba(255,255,255,0.02)}
+/* SAR TABLE */
+.sar-table-wrap{overflow-x:auto}
+.sar-table{width:100%;border-collapse:collapse;min-width:900px}
+.sar-table th{padding:9px 12px;text-align:left;font-size:11px;font-weight:500;color:var(--text2);text-transform:uppercase;letter-spacing:0.5px;background:rgba(0,0,0,0.2);border-bottom:1px solid var(--border);white-space:nowrap}
+.sar-table td{padding:9px 12px;border-bottom:1px solid var(--border);font-size:12px;vertical-align:middle}
+.sar-table tr:hover td{background:rgba(255,255,255,0.02)}
+.sar-cell{padding:4px 10px;border-radius:6px;font-size:11px;font-weight:500;white-space:nowrap;display:inline-block}
+.sar-vigente{background:var(--green-l);color:#4ade80}
+.sar-vencida{background:var(--red-l);color:#f87171}
+.sar-por_vencer{background:var(--orange-l);color:#fb923c}
+.sar-atencion{background:rgba(234,179,8,0.15);color:#facc15}
+.sar-sin_fecha{background:rgba(100,120,140,0.2);color:var(--text2)}
+.sar-indefinido{background:var(--green-l);color:#4ade80}
+.sar-nodata{background:rgba(100,120,140,0.15);color:var(--text3)}
+/* FILTER BAR */
+.filter-bar{display:flex;gap:8px;margin-bottom:1rem;flex-wrap:wrap;align-items:center}
+.filter-btn{padding:5px 12px;border-radius:20px;border:1px solid var(--border2);background:transparent;color:var(--text2);font-size:12px;cursor:pointer;font-family:'Barlow',sans-serif;transition:all 0.15s}
+.filter-btn:hover,.filter-btn.active{background:var(--amber);color:#000;border-color:var(--amber)}
+.search-box{padding:6px 12px;border-radius:var(--radius);border:1px solid var(--border2);background:var(--card);color:var(--text);font-size:13px;font-family:'Barlow',sans-serif;outline:none;width:220px}
+.search-box::placeholder{color:var(--text3)}
+.search-box:focus{border-color:var(--amber)}
+/* SNAPSHOT SECTION */
+.snapshot-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:gap}
+.snapshot-table{width:100%;border-collapse:collapse}
+.snapshot-table th{padding:9px 12px;text-align:left;font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:0.5px;border-bottom:1px solid var(--border);background:rgba(0,0,0,0.2)}
+.snapshot-table td{padding:9px 12px;border-bottom:1px solid var(--border);font-size:13px}
+.snapshot-table tr:hover td{background:rgba(255,255,255,0.02)}
+.delta-up{color:var(--green);font-size:11px}
+.delta-down{color:var(--red);font-size:11px}
+.delta-eq{color:var(--text2);font-size:11px}
+/* ALERTS */
+.alert-box{background:var(--red-l);border:1px solid rgba(231,76,60,0.3);border-radius:var(--radius);padding:10px 14px;font-size:12px;color:#fca5a5;margin-bottom:1rem;display:flex;align-items:center;gap:8px}
+.info-box{background:var(--blue-l);border:1px solid rgba(52,152,219,0.3);border-radius:var(--radius);padding:10px 14px;font-size:12px;color:#93c5fd;margin-bottom:1rem}
+/* SAR ICON */
+.sar-warn{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:4px}
+.sar-warn.vencida{background:var(--red)}
+.sar-warn.por_vencer{background:var(--orange)}
+.sar-warn.atencion{background:var(--orange-l)}
+/* GRID HELPERS */
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+.section-title{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:17px;letter-spacing:0.3px;margin-bottom:1rem;display:flex;align-items:center;gap:8px}
+.divider{border:none;border-top:1px solid var(--border);margin:1.5rem 0}
+.tag{display:inline-block;background:var(--card2);border:1px solid var(--border2);border-radius:4px;padding:2px 7px;font-size:11px;color:var(--text2)}
+/* MODAL */
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:200;display:flex;align-items:center;justify-content:center}
+.modal{background:var(--card);border:1px solid var(--border2);border-radius:var(--radius-lg);padding:2rem;width:480px;max-width:95vw}
+.modal-title{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:20px;margin-bottom:1.5rem}
+.form-group{margin-bottom:1rem}
+.form-label{display:block;font-size:12px;color:var(--text2);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px}
+.form-input{width:100%;padding:8px 12px;border-radius:var(--radius);border:1px solid var(--border2);background:var(--surface);color:var(--text);font-size:13px;font-family:'Barlow',sans-serif;outline:none}
+.form-input:focus{border-color:var(--amber)}
+.modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:1.5rem}
+/* COMPARISON */
+.compare-select{display:flex;gap:12px;align-items:center;margin-bottom:1rem;flex-wrap:wrap}
+.compare-select select{padding:6px 12px;border-radius:var(--radius);border:1px solid var(--border2);background:var(--card);color:var(--text);font-size:13px;font-family:'Barlow',sans-serif;outline:none;cursor:pointer}
+.compare-select select:focus{border-color:var(--amber)}
+.compare-cards{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1.5rem}
+.compare-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1.25rem}
+.compare-card-title{font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:1px;margin-bottom:1rem}
+.compare-metric{display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border)}
+.compare-metric:last-child{border-bottom:none}
+.compare-metric-label{font-size:12px;color:var(--text2)}
+.compare-metric-val{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:18px}
+/* DETAIL DOTS (legacy, kept for compat) */
+.dot-row{display:flex;gap:4px;flex-wrap:wrap}
+.dot{width:10px;height:10px;border-radius:2px;flex-shrink:0}
+.dot-ok{background:var(--green)}.dot-missing{background:var(--red)}
+.dot-pending{background:var(--orange)}.dot-nodata{background:rgba(100,120,140,0.3)}
+/* BLOCKER SUMMARY BOX */
+.blocker-box{background:rgba(0,0,0,0.25);border-bottom:1px solid var(--border);padding:1rem 1.25rem}
+.blocker-box-title{font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;display:flex;align-items:center;gap:8px}
+.blocker-item{display:grid;grid-template-columns:160px 1fr auto;align-items:center;gap:10px;padding:4px 0;border-bottom:1px solid rgba(255,255,255,0.04)}
+.blocker-item:last-child{border-bottom:none}
+.blocker-item-label{font-size:12px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.blocker-bar-bg{height:8px;background:rgba(255,255,255,0.06);border-radius:4px;overflow:hidden}
+.blocker-bar-fill{height:100%;border-radius:4px}
+.blocker-item-count{font-size:11px;display:flex;gap:8px;white-space:nowrap}
+.blocker-tag-ok{color:#4ade80;font-weight:500}
+.blocker-tag-miss{color:#f87171;font-weight:500}
+.blocker-tag-pend{color:#fbbf24;font-weight:500}
+/* WORKER DETAIL EXPAND */
+.worker-row-main{cursor:pointer}
+.worker-row-main:hover td{background:rgba(255,255,255,0.03)!important}
+.worker-row-expand{display:none}
+.worker-row-expand.open{display:table-row}
+.worker-row-expand td{padding:0!important;border-bottom:1px solid var(--border);background:rgba(0,0,0,0.2)}
+.item-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;padding:12px 16px}
+.item-chip{display:flex;align-items:center;gap:8px;padding:6px 10px;border-radius:6px;font-size:12px}
+.item-chip-ok{background:rgba(39,174,96,0.12);border:1px solid rgba(39,174,96,0.25);color:#4ade80}
+.item-chip-missing{background:rgba(231,76,60,0.12);border:1px solid rgba(231,76,60,0.25);color:#f87171}
+.item-chip-pending{background:rgba(243,156,18,0.12);border:1px solid rgba(243,156,18,0.25);color:#fbbf24}
+.item-chip-nodata{background:rgba(100,120,140,0.08);border:1px solid rgba(100,120,140,0.15);color:var(--text3)}
+.item-icon{font-size:14px;font-weight:700;width:16px;text-align:center;flex-shrink:0}
+.worker-expand-hint{font-size:10px;color:var(--text3);margin-left:6px}
+/* COMPARISON ITEM DELTA TABLE */
+.item-delta-table{width:100%;border-collapse:collapse;font-size:12px;margin-top:8px}
+.item-delta-table th{font-size:10px;color:var(--text2);text-transform:uppercase;letter-spacing:0.5px;padding:5px 8px;border-bottom:1px solid var(--border);text-align:left}
+.item-delta-table td{padding:5px 8px;border-bottom:1px solid rgba(255,255,255,0.04)}
+.item-delta-table tr:last-child td{border-bottom:none}
+.cargo-compare-section{background:var(--card);border:1px solid var(--border);border-radius:var(--radius-lg);margin-bottom:0.75rem;overflow:hidden}
+.cargo-compare-header{padding:0.75rem 1rem;background:rgba(0,0,0,0.2);display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none}
+.cargo-compare-body{display:none;padding:0.75rem 1rem;border-top:1px solid var(--border)}
+.cargo-compare-section.open .cargo-compare-body{display:block}
+/* EMPTY */
+.empty-state{text-align:center;padding:3rem;color:var(--text2)}
+.empty-state .icon{font-size:36px;margin-bottom:12px;opacity:0.4}
+/* RESPONSIVE */
+@media(max-width:1100px){.kpi-grid{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:768px){
+  .kpi-grid{grid-template-columns:repeat(2,1fr)}
+  .chart-row{grid-template-columns:1fr}
+  .two-col{grid-template-columns:1fr}
+  .compare-cards{grid-template-columns:1fr}
+}
+/* UPLOAD INLINE (dentro de pestaña sin Excel) */
+.upload-inline{text-align:center;padding:3rem 2rem;color:var(--text2);background:var(--card);border:2px dashed var(--border2);border-radius:var(--radius-lg);margin:1rem 0}
+/* TOAST */
+.toast{position:fixed;bottom:2rem;right:2rem;background:var(--card);border:1px solid var(--green);border-radius:var(--radius);padding:12px 20px;font-size:13px;color:var(--green);z-index:300;transform:translateY(100px);opacity:0;transition:all 0.3s}
+.toast.show{transform:translateY(0);opacity:1}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="logo">
+    <span class="logo-badge">SPOT</span>
+    <div>
+      <div class="logo-title">Dashboard Acreditaciones MEL</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <span id="apiStatus" style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text2)">
+      <span id="apiDot" style="width:7px;height:7px;border-radius:50%;background:var(--text3);display:inline-block"></span>
+      <span id="apiLabel">conectando…</span>
+    </span>
+    <span class="file-name" id="fileNameDisplay">Sin archivo cargado</span>
+    <button class="btn btn-primary" onclick="document.getElementById('fileInput').click()">
+      &#8679; Cargar Excel
+    </button>
+    <input type="file" id="fileInput" accept=".xlsx,.xls">
+  </div>
+</div>
+
+<!-- Main Dashboard — siempre visible -->
+<div id="mainDash">
+  <nav class="tabs-nav">
+    <button class="tab-btn" data-tab="semanal" id="tabBtnSemanal">&#128197; Seguimiento Semanal</button>
+    <button class="tab-btn" data-tab="resumen" id="tabBtnResumen">&#9685; Resumen <span id="tabResumenLock" style="font-size:10px;opacity:0.5">&#128274;</span></button>
+    <button class="tab-btn" data-tab="cargo" id="tabBtnCargo">&#9783; Por Cargo <span id="tabCargoLock" style="font-size:10px;opacity:0.5">&#128274;</span></button>
+    <button class="tab-btn" data-tab="sar" id="tabBtnSar">&#9888; Vigencias SAR <span id="tabSarLock" style="font-size:10px;opacity:0.5">&#128274;</span></button>
+  </nav>
+
+  <!-- TAB: RESUMEN -->
+  <div class="tab-pane" id="tab-resumen">
+    <div id="noExcelResumen" class="upload-inline" style="display:none">
+      <div class="upload-icon" style="font-size:32px;margin-bottom:12px">&#128196;</div>
+      <div style="font-weight:500;margin-bottom:6px">Carga un archivo Excel para ver el resumen</div>
+      <div style="font-size:12px;color:var(--text2);margin-bottom:16px">Este análisis requiere los datos de la planilla SPOT actualizada</div>
+      <button class="btn btn-primary" onclick="document.getElementById('fileInput').click()">Seleccionar Excel</button>
+    </div>
+    <div id="resumenContent">
+      <div class="kpi-grid">
+        <div class="kpi-card amber"><div class="kpi-label">Total Trabajadores</div><div class="kpi-value" id="kpiTotal">—</div><div class="kpi-sub">Faena MEL</div></div>
+        <div class="kpi-card green"><div class="kpi-label">Acreditados</div><div class="kpi-value" id="kpiAcreditado">—</div><div class="kpi-sub" id="kpiAcredPct">—% del total</div></div>
+        <div class="kpi-card purple"><div class="kpi-label">Hab. Actualizar Examen</div><div class="kpi-value" id="kpiHabAct">—</div><div class="kpi-sub" id="kpiHabActPct">—% del total</div></div>
+        <div class="kpi-card teal"><div class="kpi-label">Hab. Postular</div><div class="kpi-value" id="kpiHabPost">—</div><div class="kpi-sub" id="kpiHabPostPct">—% del total</div></div>
+        <div class="kpi-card red"><div class="kpi-label">No Acreditados</div><div class="kpi-value" id="kpiNoAcred">—</div><div class="kpi-sub" id="kpiNoAcredPct">—% del total</div></div>
+      </div>
+      <div class="chart-row">
+        <div class="chart-card">
+          <div class="chart-title">Distribución de estatus</div>
+          <div style="position:relative;height:200px"><canvas id="chartDonut" role="img" aria-label="Distribución de estatus MEL"></canvas></div>
+          <div id="donutLegend" style="margin-top:12px;display:flex;flex-direction:column;gap:6px;font-size:12px"></div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-title">Avance promedio por cargo (No Acreditados)</div>
+          <div style="position:relative" id="barChartWrap"><canvas id="chartBar" role="img" aria-label="Avance promedio por cargo"></canvas></div>
+        </div>
+      </div>
+      <div id="alertsResumen"></div>
+    </div>
+  </div>
+
+  <!-- TAB: POR CARGO -->
+  <div class="tab-pane" id="tab-cargo">
+    <div id="noExcelCargo" class="upload-inline" style="display:none">
+      <div class="upload-icon" style="font-size:32px;margin-bottom:12px">&#128196;</div>
+      <div style="font-weight:500;margin-bottom:6px">Carga un archivo Excel para ver el detalle por cargo</div>
+      <div style="font-size:12px;color:var(--text2);margin-bottom:16px">Este análisis requiere los datos de la planilla SPOT actualizada</div>
+      <button class="btn btn-primary" onclick="document.getElementById('fileInput').click()">Seleccionar Excel</button>
+    </div>
+    <div id="cargoContent">
+      <div class="filter-bar">
+        <input class="search-box" id="searchWorker" placeholder="&#128269; Buscar trabajador..." oninput="renderCargo()">
+        <button class="filter-btn active" data-status="todos" onclick="setStatusFilter(this,'todos')">Todos</button>
+        <button class="filter-btn" data-status="Acreditado" onclick="setStatusFilter(this,'Acreditado')">Acreditados</button>
+        <button class="filter-btn" data-status="habilitado_any" onclick="setStatusFilter(this,'habilitado_any')">Habilitados</button>
+        <button class="filter-btn" data-status="Habilitado - Actualizar Examen" onclick="setStatusFilter(this,'Habilitado - Actualizar Examen')">· Actualizar Examen</button>
+        <button class="filter-btn" data-status="Habilitado - Postular" onclick="setStatusFilter(this,'Habilitado - Postular')">· Postular</button>
+        <button class="filter-btn" data-status="No acreditado" onclick="setStatusFilter(this,'No acreditado')">No Acreditados</button>
+        <span style="margin-left:auto;font-size:12px;color:var(--text2)" id="cargoCount"></span>
+      </div>
+      <div id="cargoAccordion"></div>
+    </div>
+  </div>
+
+  <!-- TAB: VIGENCIAS SAR -->
+  <div class="tab-pane" id="tab-sar">
+    <div id="noExcelSar" class="upload-inline" style="display:none">
+      <div class="upload-icon" style="font-size:32px;margin-bottom:12px">&#128196;</div>
+      <div style="font-weight:500;margin-bottom:6px">Carga un archivo Excel para ver las vigencias SAR</div>
+      <div style="font-size:12px;color:var(--text2);margin-bottom:16px">Este análisis requiere los datos de la planilla SPOT actualizada</div>
+      <button class="btn btn-primary" onclick="document.getElementById('fileInput').click()">Seleccionar Excel</button>
+    </div>
+    <div id="sarContent">
+      <div class="filter-bar">
+        <input class="search-box" id="searchSar" placeholder="&#128269; Buscar..." oninput="renderSar()">
+        <button class="filter-btn active" data-sar="todos" onclick="setSarFilter(this,'todos')">Todos</button>
+        <button class="filter-btn" data-sar="vencida" onclick="setSarFilter(this,'vencida')">Vencidas</button>
+        <button class="filter-btn" data-sar="por_vencer" onclick="setSarFilter(this,'por_vencer')">Por vencer &lt;30d</button>
+        <button class="filter-btn" data-sar="atencion" onclick="setSarFilter(this,'atencion')">Atención &lt;90d</button>
+        <button class="filter-btn" data-sar="sin_fecha" onclick="setSarFilter(this,'sin_fecha')">Sin Fecha</button>
+        <button class="filter-btn" data-sar="vigente" onclick="setSarFilter(this,'vigente')">Vigentes</button>
+      </div>
+      <div class="sar-table-wrap">
+        <table class="sar-table">
+          <thead><tr>
+            <th>Trabajador</th><th>Cargo</th><th>Estatus MEL</th>
+            <th>SAR Altura Geog.</th><th>SAR Contratos</th><th>SAR Cero Daño</th><th>SAR 3D CEIM</th><th>Peor Estatus</th>
+          </tr></thead>
+          <tbody id="sarBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB: SEGUIMIENTO SEMANAL — siempre visible, no requiere Excel -->
+  <div class="tab-pane active" id="tab-semanal">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem;flex-wrap:wrap;gap:12px">
+      <div>
+        <div class="section-title">&#128197; Historial de Snapshots Semanales</div>
+        <div style="font-size:12px;color:var(--text2)">Historial compartido — visible para todos los que tengan el enlace</div>
+      </div>
+      <button class="btn btn-success" onclick="openSnapshotModal()" id="btnSaveSnap" disabled title="Carga un Excel primero para guardar un snapshot">&#9650; Guardar Snapshot Semanal</button>
+    </div>
+    <div id="snapshotsEmpty" class="empty-state" style="display:none">
+      <div class="icon">&#128197;</div>
+      <div>No hay snapshots guardados aún.<br>Carga un archivo Excel y guarda el primer snapshot.</div>
+    </div>
+    <div id="snapshotsHistory"></div>
+    <hr class="divider">
+    <div class="section-title">&#9878; Comparar dos períodos</div>
+    <div class="compare-select">
+      <div>
+        <div style="font-size:11px;color:var(--text2);margin-bottom:4px">Período A</div>
+        <select id="compareA" onchange="renderComparison()"><option value="">— Seleccionar —</option></select>
+      </div>
+      <div style="color:var(--text2);padding-top:18px;font-size:18px">vs</div>
+      <div>
+        <div style="font-size:11px;color:var(--text2);margin-bottom:4px">Período B</div>
+        <select id="compareB" onchange="renderComparison()"><option value="">— Seleccionar —</option></select>
+      </div>
+    </div>
+    <div id="comparisonArea"></div>
+  </div>
+
+</div><!-- /mainDash -->
+<div class="modal-bg" id="snapModal" style="display:none" onclick="if(event.target===this)closeModal()">
+  <div class="modal">
+    <div class="modal-title">Guardar Snapshot Semanal</div>
+    <div class="form-group">
+      <label class="form-label">Etiqueta de la semana</label>
+      <input class="form-input" id="snapLabel" placeholder="Ej: 13-19 Abr 2026">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Faena</label>
+      <input class="form-input" id="snapFaena" value="MEL" readonly>
+    </div>
+    <div id="snapPreview" style="background:var(--surface);border-radius:var(--radius);padding:12px;font-size:12px;color:var(--text2);margin-top:8px"></div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeModal()">Cancelar</button>
+      <button class="btn btn-success" onclick="saveSnapshot()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ─────────────────────────────────────────────────────────
+//  STATE
+// ─────────────────────────────────────────────────────────
+let persons = [];
+let excelLoaded = false;
+let statusFilter = 'todos';
+let sarFilter = 'todos';
+let donutChart = null, barChart = null, compareChart = null;
+let snapshotsCache = [];
+
+const PROG_LABELS = ['Cero Daño','Cert. Antecedentes','Ficha MEL','Regl. Transporte','Exam. Altura+Drogas','Anexo Vínculo'];
+const TODAY = new Date(); TODAY.setHours(0,0,0,0);
+
+// ─────────────────────────────────────────────────────────
+//  API
+// ─────────────────────────────────────────────────────────
+const API = '';
+async function apiGet(p){ const r=await fetch(API+p); if(!r.ok) throw new Error(r.status); return r.json(); }
+async function apiPost(p,b){ const r=await fetch(API+p,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)}); if(!r.ok) throw new Error(r.status); return r.json(); }
+async function apiDelete(p){ const r=await fetch(API+p,{method:'DELETE'}); if(!r.ok) throw new Error(r.status); return r.json(); }
+
+function setApiStatus(ok, label){
+  document.getElementById('apiDot').style.background = ok ? 'var(--green)' : 'var(--orange)';
+  document.getElementById('apiLabel').textContent = label || (ok ? 'En línea' : 'Sin conexión');
+}
+
+// ─────────────────────────────────────────────────────────
+//  LOAD CURRENT DATA FROM SERVER (shared for all users)
+// ─────────────────────────────────────────────────────────
+async function loadCurrentData(){
+  try {
+    const data = await apiGet('/api/current-data');
+    if(data && data.persons && data.persons.length > 0){
+      persons = data.persons.map(p => ({
+        ...p,
+        sarParsed: p.sar.map(parseSar),
+        sarWorst: sarWorstStatus(p.sar.map(parseSar))
+      }));
+      excelLoaded = true;
+      showExcelLoaded(data.filename, data.uploaded_at);
+      renderAll();
+    }
+  } catch(e) {
+    console.warn('No current data on server yet');
+  }
+}
+
+function showExcelLoaded(filename, uploadedAt){
+  document.getElementById('btnSaveSnap').disabled = false;
+  document.getElementById('fileNameDisplay').textContent = filename || 'Excel cargado';
+  const dt = uploadedAt ? new Date(uploadedAt).toLocaleString('es-CL',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}) : '';
+  if(dt) document.getElementById('fileNameDisplay').title = `Cargado: ${dt}`;
+  ['Resumen','Cargo','Sar'].forEach(t=>{
+    const up = document.getElementById('noExcel'+t);
+    const ct = document.getElementById(t.toLowerCase()+'Content');
+    if(up) up.style.display = 'none';
+    if(ct) ct.style.display = '';
+  });
+}
+
+// ─────────────────────────────────────────────────────────
+//  FILE UPLOAD → SERVER
+// ─────────────────────────────────────────────────────────
+document.getElementById('fileInput').addEventListener('change', e=>{
+  const f = e.target.files[0];
+  if(f) uploadToServer(f);
+  e.target.value = '';
+});
+
+async function uploadToServer(file){
+  setApiStatus(false, 'Subiendo archivo…');
+  document.getElementById('fileNameDisplay').textContent = 'Procesando…';
+  const form = new FormData();
+  form.append('file', file);
+  try {
+    const r = await fetch(API+'/api/upload', {method:'POST', body: form});
+    if(!r.ok){ const err=await r.json(); throw new Error(err.detail||r.status); }
+    const result = await r.json();
+    setApiStatus(true, `En línea · ${result.count} trabajadores`);
+    showToast(`✓ Excel subido al servidor (${result.count} personas) — todos pueden verlo ahora`);
+    await loadCurrentData();
+    switchTab('resumen');
+  } catch(e){
+    setApiStatus(false, 'Error al subir');
+    showToast('Error al subir archivo: '+e.message, 'error');
+    document.getElementById('fileNameDisplay').textContent = 'Error al subir';
+  }
+}
+
+// ─────────────────────────────────────────────────────────
+//  HELPERS
+// ─────────────────────────────────────────────────────────
+function norm(s){
+  return (s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[\s\n\r]+/g,' ').trim().toUpperCase();
+}
+
+function parseSar(val){
+  if(!val || val==='' || val==='nan') return {status:'nodata',label:'Sin datos'};
+  const s = String(val).trim();
+  if(!s || s==='00:00:00' || s==='0') return {status:'sin_fecha',label:'Sin Fecha'};
+  if(s==='Sin Fecha') return {status:'sin_fecha',label:'Sin Fecha'};
+  if(s==='Indefinido'||s==='Vigente') return {status:'indefinido',label:'Indefinido ✓'};
+  const d = new Date(s);
+  if(!isNaN(d.getTime())){
+    if(d.getFullYear()>2090) return {status:'indefinido',label:'Indefinido ✓'};
+    if(d.getFullYear()<1901) return {status:'sin_fecha',label:'Sin Fecha'};
+    const days = Math.floor((d-TODAY)/86400000);
+    const fmt = d.toLocaleDateString('es-CL',{day:'2-digit',month:'2-digit',year:'numeric'});
+    if(days<0)  return {status:'vencida',   label:`${fmt} (Vencida)`,days};
+    if(days<30) return {status:'por_vencer',label:`${fmt} (${days}d)`,days};
+    if(days<90) return {status:'atencion',  label:`${fmt} (${days}d)`,days};
+    return {status:'vigente',label:fmt,days};
+  }
+  return {status:'nodata',label:s};
+}
+
+const sarOrder = {vencida:5,sin_fecha:4,por_vencer:3,atencion:2,vigente:0,indefinido:0,nodata:-1};
+function sarWorstStatus(sarArr){
+  return sarArr.reduce((w,s)=>sarOrder[s.status]>sarOrder[w.status]?s:w,{status:'nodata',label:'—'});
+}
+
+function buildBlockerAnalysis(noAcreds){
+  return PROG_LABELS.map((lbl,i)=>{
+    const done    = noAcreds.filter(p=>p.progress.detail[i]==='ok').length;
+    const missing = noAcreds.filter(p=>p.progress.detail[i]==='missing').length;
+    const pending = noAcreds.filter(p=>p.progress.detail[i]==='pending').length;
+    const nodata  = noAcreds.filter(p=>p.progress.detail[i]==='nodata').length;
+    const active  = noAcreds.length - nodata;
+    return {label:lbl,done,missing,pending,nodata,active,pct:active>0?Math.round(done/active*100):0};
+  }).sort((a,b)=>a.pct-b.pct);
+}
+
+function progressColor(pct){ return pct===null?'#4D6480':pct>=75?'#27AE60':pct>=40?'#F39C12':'#E74C3C'; }
+
+// Helpers para los nuevos sub-estatus de Habilitado
+function isHabilitado(est){ return est==='Habilitado - Actualizar Examen'||est==='Habilitado - Postular'||est==='Habilitado'; }
+function isNoAcreditado(est){ return est==='No acreditado'; }
+function isAcreditado(est){ return est==='Acreditado'; }
+
+function statusBadge(est){
+  if(est==='Acreditado')                    return '<span class="badge badge-green">Acreditado</span>';
+  if(est==='Habilitado - Actualizar Examen') return '<span class="badge badge-purple">Hab. Actualizar Examen</span>';
+  if(est==='Habilitado - Postular')          return '<span class="badge badge-teal">Hab. Postular</span>';
+  if(est==='Habilitado')                    return '<span class="badge badge-blue">Habilitado</span>';
+  if(est==='No acreditado')                 return '<span class="badge badge-red">No Acreditado</span>';
+  return `<span class="badge badge-gray">${est||'Sin estatus'}</span>`;
+}
+
+function sarCellHtml(sar){ return `<span class="sar-cell sar-${sar.status}">${sar.label}</span>`; }
+function sarAlertIcon(p){
+  if(p.sarWorst.status==='vencida')    return '<span class="sar-warn vencida"></span>';
+  if(p.sarWorst.status==='por_vencer') return '<span class="sar-warn por_vencer"></span>';
+  return '';
+}
+function sarStatusLabel(st){ return {vencida:'Vencida',por_vencer:'Por vencer',atencion:'Atención',vigente:'OK',indefinido:'OK',sin_fecha:'Sin fecha',nodata:'—'}[st]||st; }
+function itemChipIcon(status){ return {ok:{icon:'✓',cls:'item-chip-ok'},missing:{icon:'✗',cls:'item-chip-missing'},pending:{icon:'○',cls:'item-chip-pending'}}[status]||{icon:'—',cls:'item-chip-nodata'}; }
+
+// ─────────────────────────────────────────────────────────
+//  RENDER ALL
+// ─────────────────────────────────────────────────────────
+function renderAll(){ renderResumen(); renderCargo(); renderSar(); }
+
+// ─────────────────────────────────────────────────────────
+//  RESUMEN
+// ─────────────────────────────────────────────────────────
+function renderResumen(){
+  const total=persons.length;
+  const acred   = persons.filter(p=>isAcreditado(p.estatus)).length;
+  const habAct  = persons.filter(p=>p.estatus==='Habilitado - Actualizar Examen').length;
+  const habPost = persons.filter(p=>p.estatus==='Habilitado - Postular').length;
+  const habLeg  = persons.filter(p=>p.estatus==='Habilitado').length; // legacy
+  const habTotal= habAct+habPost+habLeg;
+  const noAcred = persons.filter(p=>isNoAcreditado(p.estatus)).length;
+  const pct=n=>total>0?Math.round(n/total*100):0;
+
+  document.getElementById('kpiTotal').textContent=total;
+  document.getElementById('kpiAcreditado').textContent=acred;
+  document.getElementById('kpiAcredPct').textContent=`${pct(acred)}% del total`;
+  document.getElementById('kpiHabAct').textContent=habAct;
+  document.getElementById('kpiHabActPct').textContent=`${pct(habAct)}% del total`;
+  document.getElementById('kpiHabPost').textContent=habPost;
+  document.getElementById('kpiHabPostPct').textContent=`${pct(habPost)}% del total`;
+  document.getElementById('kpiNoAcred').textContent=noAcred;
+  document.getElementById('kpiNoAcredPct').textContent=`${pct(noAcred)}% del total`;
+
+  if(donutChart) donutChart.destroy();
+  donutChart=new Chart(document.getElementById('chartDonut'),{
+    type:'doughnut',
+    data:{
+      labels:['Acreditado','Hab. Actualizar Examen','Hab. Postular','No Acreditado'],
+      datasets:[{data:[acred,habAct,habPost,noAcred],
+        backgroundColor:['#27AE60','#a855f7','#14b8a6','#E74C3C'],borderWidth:0}]},
+    options:{responsive:true,maintainAspectRatio:false,cutout:'70%',
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.label}: ${c.raw} (${pct(c.raw)}%)`}}}}
+  });
+  document.getElementById('donutLegend').innerHTML=
+    [['#27AE60','Acreditado',acred],['#a855f7','Hab. Actualizar Examen',habAct],
+     ['#14b8a6','Hab. Postular',habPost],['#E74C3C','No Acreditado',noAcred]]
+    .map(([c,l,n])=>`<div style="display:flex;align-items:center;justify-content:space-between">
+      <span style="display:flex;align-items:center;gap:6px"><span style="width:10px;height:10px;border-radius:2px;background:${c};display:inline-block"></span>${l}</span>
+      <span style="font-weight:500">${n} <span style="color:var(--text2);font-size:11px">(${pct(n)}%)</span></span></div>`).join('');
+
+  const cargos=[...new Set(persons.map(p=>p.cargo))].sort();
+  const cargoData=cargos.map(c=>{
+    const na=persons.filter(p=>p.cargo===c&&isNoAcreditado(p.estatus)&&p.progress.pct!==null);
+    if(!na.length) return null;
+    return{cargo:c,avg:Math.round(na.reduce((s,p)=>s+p.progress.pct,0)/na.length),count:na.length};
+  }).filter(Boolean).sort((a,b)=>a.avg-b.avg);
+
+  const barH=Math.max(200,cargoData.length*45+80);
+  document.getElementById('barChartWrap').style.height=barH+'px';
+  if(barChart) barChart.destroy();
+  barChart=new Chart(document.getElementById('chartBar'),{
+    type:'bar',
+    data:{labels:cargoData.map(d=>`${d.cargo} (${d.count})`),
+      datasets:[{data:cargoData.map(d=>d.avg),backgroundColor:cargoData.map(d=>progressColor(d.avg)),borderWidth:0,borderRadius:4}]},
+    options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,
+      scales:{x:{min:0,max:100,grid:{color:'rgba(255,255,255,0.05)'},ticks:{color:'#8899AA',callback:v=>v+'%'}},
+        y:{grid:{display:false},ticks:{color:'#8899AA',font:{size:11}}}},
+      plugins:{legend:{display:false}}}
+  });
+
+  const vencidas=persons.filter(p=>p.sarWorst&&p.sarWorst.status==='vencida');
+  const porVencer=persons.filter(p=>p.sarWorst&&p.sarWorst.status==='por_vencer');
+  let alertsHtml='';
+  if(vencidas.length) alertsHtml+=`<div class="alert-box">⚠ <strong>${vencidas.length} trabajador(es)</strong> con SAR vencido: ${vencidas.slice(0,5).map(p=>p.nombre).join(', ')}${vencidas.length>5?` y ${vencidas.length-5} más...`:''}</div>`;
+  if(porVencer.length) alertsHtml+=`<div class="info-box">⏱ <strong>${porVencer.length} trabajador(es)</strong> con SAR por vencer en menos de 30 días.</div>`;
+  document.getElementById('alertsResumen').innerHTML=alertsHtml;
+}
+
+// ─────────────────────────────────────────────────────────
+//  POR CARGO
+// ─────────────────────────────────────────────────────────
+function setStatusFilter(btn,val){
+  statusFilter=val;
+  document.querySelectorAll('.filter-btn[data-status]').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active'); renderCargo();
+}
+
+function renderCargo(){
+  const q=norm(document.getElementById('searchWorker').value);
+  const filtered=persons.filter(p=>{
+    if(statusFilter==='habilitado_any' && !isHabilitado(p.estatus)) return false;
+    if(statusFilter!=='todos' && statusFilter!=='habilitado_any' && p.estatus!==statusFilter) return false;
+    if(q&&!norm(p.nombre).includes(q)&&!norm(p.cargo).includes(q)&&!norm(p.rut||'').includes(q)) return false;
+    return true;
+  });
+  const byCargo={};
+  for(const p of filtered){ if(!byCargo[p.cargo]) byCargo[p.cargo]=[]; byCargo[p.cargo].push(p); }
+  const sortedCargos=Object.keys(byCargo).sort();
+  document.getElementById('cargoCount').textContent=`${filtered.length} trabajador(es)`;
+
+  if(!sortedCargos.length){
+    document.getElementById('cargoAccordion').innerHTML=`<div class="empty-state"><div class="icon">🔍</div><div>No se encontraron resultados</div></div>`;
+    return;
+  }
+
+  let html='';
+  for(const cargo of sortedCargos){
+    const workers=byCargo[cargo].sort((a,b)=>(a.apellidoPaterno||'').localeCompare(b.apellidoPaterno||''));
+    const ac      = workers.filter(p=>isAcreditado(p.estatus)).length;
+    const habAct  = workers.filter(p=>p.estatus==='Habilitado - Actualizar Examen').length;
+    const habPost = workers.filter(p=>p.estatus==='Habilitado - Postular').length;
+    const habLeg  = workers.filter(p=>p.estatus==='Habilitado').length;
+    const noAcreds= workers.filter(p=>isNoAcreditado(p.estatus));
+    const na=noAcreds.length;
+    const noAcredsProg=noAcreds.filter(p=>p.progress.pct!==null);
+    const avg=noAcredsProg.length?Math.round(noAcredsProg.reduce((s,p)=>s+p.progress.pct,0)/noAcredsProg.length):null;
+
+    let blockerHtml='';
+    if(na>0){
+      const analysis=buildBlockerAnalysis(noAcreds);
+      blockerHtml=`<div class="blocker-box">
+        <div class="blocker-box-title"><span>▪</span> Análisis de bloqueos — ${na} No Acreditado${na>1?'s':''} · ¿Qué falta completar?</div>
+        ${analysis.map(item=>{
+          const barColor=progressColor(item.pct);
+          return`<div class="blocker-item">
+            <span class="blocker-item-label">${item.label}</span>
+            <div class="blocker-bar-bg"><div class="blocker-bar-fill" style="width:${item.pct}%;background:${barColor}"></div></div>
+            <div class="blocker-item-count">
+              <span class="blocker-tag-ok">${item.done}✓</span>
+              ${item.missing?`<span class="blocker-tag-miss">${item.missing}✗</span>`:''}
+              ${item.pending?`<span class="blocker-tag-pend">${item.pending}○</span>`:''}
+              <span style="color:var(--text3);font-size:10px;min-width:28px">${item.pct}%</span>
+            </div>
+          </div>`;
+        }).join('')}
+      </div>`;
+    }
+
+    html+=`<div class="cargo-section" id="sec-${encodeURIComponent(cargo)}">
+      <div class="cargo-header" onclick="toggleCargo('${encodeURIComponent(cargo)}')">
+        <div style="display:flex;align-items:center;gap:12px">
+          <span class="chevron">▶</span>
+          <span class="cargo-name">${cargo}</span>
+          <span class="tag">${workers.length} personas</span>
+        </div>
+        <div class="cargo-meta">
+          <div class="cargo-stats">
+            ${ac?`<span class="badge badge-green">${ac} Acred.</span>`:''}
+            ${habAct?`<span class="badge badge-purple">${habAct} Act.Exam.</span>`:''}
+            ${habPost?`<span class="badge badge-teal">${habPost} Postular</span>`:''}
+            ${habLeg?`<span class="badge badge-blue">${habLeg} Hab.</span>`:''}
+            ${na?`<span class="badge badge-red">${na} No Acred.</span>`:''}
+          </div>
+          ${avg!==null?`<div class="progress-wrap" style="width:130px">
+            <div class="progress-bar-bg"><div class="progress-bar-fill" style="width:${avg}%;background:${progressColor(avg)}"></div></div>
+            <span class="progress-label" style="color:${progressColor(avg)}">${avg}%</span>
+          </div>`:''}
+        </div>
+      </div>
+      <div class="cargo-body">${blockerHtml}
+        <table class="worker-table">
+          <thead><tr><th>Trabajador</th><th>RUT</th><th>Estatus</th><th>Avance</th><th>SAR</th><th style="width:28px"></th></tr></thead>
+          <tbody>`;
+
+    for(let wi=0;wi<workers.length;wi++){
+      const w=workers[wi];
+      const wid=`w-${encodeURIComponent(cargo)}-${wi}`;
+      const showProg=isNoAcreditado(w.estatus);
+      const itemsHtml=`<div class="item-grid">${PROG_LABELS.map((lbl,i)=>{
+        const st=w.progress.detail[i];
+        const {icon,cls}=itemChipIcon(st);
+        const stLabel={ok:'Completado',missing:'Faltante',pending:'Pendiente',nodata:'Sin datos'}[st]||st;
+        return`<div class="item-chip ${cls}"><span class="item-icon">${icon}</span><div><div style="font-weight:500">${lbl}</div><div style="font-size:10px;opacity:0.75">${stLabel}</div></div></div>`;
+      }).join('')}</div>`;
+      const sarDetailHtml=!showProg?`<div style="padding:12px 16px;display:grid;grid-template-columns:repeat(2,1fr);gap:8px">
+        ${['Altura Geog.','Contratos','Cero Daño','3D CEIM'].map((lbl,i)=>{
+          const sar=(w.sarParsed||[])[i]||parseSar(w.sar[i]);
+          return`<div style="display:flex;align-items:center;gap:8px;padding:6px 10px;border-radius:6px;background:rgba(255,255,255,0.04);border:1px solid var(--border)">
+            <span style="font-size:11px;color:var(--text2);min-width:80px">SAR ${lbl}</span>
+            ${sarCellHtml(sar)}</div>`;
+        }).join('')}
+      </div>`:'';
+
+      html+=`<tr class="worker-row-main" onclick="toggleWorker('${wid}')">
+        <td><strong>${w.nombre||'—'}</strong><span class="worker-expand-hint">▾ ver detalle</span></td>
+        <td style="color:var(--text2)">${w.rut||'—'}</td>
+        <td>${statusBadge(w.estatus)}</td>
+        <td>${showProg&&w.progress.pct!==null?`<div class="progress-wrap">
+          <div class="progress-bar-bg"><div class="progress-bar-fill" style="width:${w.progress.pct}%;background:${progressColor(w.progress.pct)}"></div></div>
+          <span class="progress-label" style="color:${progressColor(w.progress.pct)}">${w.progress.pct}% <span style="font-size:10px;color:var(--text2)">(${w.progress.done}/${w.progress.total})</span></span>
+        </div>`:showProg?`<span style="color:var(--text3);font-size:12px">Sin datos</span>`:`<span style="color:var(--text3);font-size:12px">—</span>`}</td>
+        <td>${sarAlertIcon(w)}<span style="font-size:11px;color:var(--text2)">${sarStatusLabel((w.sarWorst||{}).status||'nodata')}</span></td>
+        <td style="color:var(--text3);font-size:11px">▼</td>
+      </tr>
+      <tr class="worker-row-expand" id="${wid}">
+        <td colspan="6">${showProg?itemsHtml:sarDetailHtml}</td>
+      </tr>`;
+    }
+    html+='</tbody></table></div></div>';
+  }
+  document.getElementById('cargoAccordion').innerHTML=html;
+}
+
+function toggleCargo(id){ document.getElementById('sec-'+id).classList.toggle('open'); }
+function toggleWorker(id){ document.getElementById(id).classList.toggle('open'); }
+
+// ─────────────────────────────────────────────────────────
+//  SAR VIGENCIAS
+// ─────────────────────────────────────────────────────────
+function setSarFilter(btn,val){
+  sarFilter=val;
+  document.querySelectorAll('.filter-btn[data-sar]').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active'); renderSar();
+}
+
+function renderSar(){
+  const q=norm(document.getElementById('searchSar').value);
+  let filtered=persons.filter(p=>{
+    if(q&&!norm(p.nombre).includes(q)&&!norm(p.cargo).includes(q)) return false;
+    if(sarFilter==='todos') return true;
+    const ws=(p.sarWorst||{}).status||'nodata';
+    return ws===sarFilter||(sarFilter==='vigente'&&(ws==='vigente'||ws==='indefinido'));
+  });
+  filtered.sort((a,b)=>sarOrder[(b.sarWorst||{}).status||'nodata']-sarOrder[(a.sarWorst||{}).status||'nodata']);
+  if(!filtered.length){ document.getElementById('sarBody').innerHTML=`<tr><td colspan="8" style="text-align:center;padding:2rem;color:var(--text2)">Sin resultados</td></tr>`; return; }
+  document.getElementById('sarBody').innerHTML=filtered.map(p=>{
+    const sarP=(p.sarParsed||p.sar.map(parseSar));
+    return`<tr>
+      <td><strong>${p.nombre}</strong></td>
+      <td style="color:var(--text2);font-size:12px">${p.cargo}</td>
+      <td>${statusBadge(p.estatus)}</td>
+      <td>${sarCellHtml(sarP[0])}</td><td>${sarCellHtml(sarP[1])}</td>
+      <td>${sarCellHtml(sarP[2])}</td><td>${sarCellHtml(sarP[3])}</td>
+      <td><span class="sar-cell sar-${(p.sarWorst||{}).status||'nodata'}">${sarStatusLabel((p.sarWorst||{}).status||'nodata').toUpperCase()}</span></td>
+    </tr>`;
+  }).join('');
+}
+
+// ─────────────────────────────────────────────────────────
+//  SEGUIMIENTO SEMANAL
+// ─────────────────────────────────────────────────────────
+async function loadSnapshotsFromAPI(){
+  try {
+    snapshotsCache = await apiGet('/api/snapshots');
+    setApiStatus(true, excelLoaded ? 'En línea · datos compartidos' : 'En línea');
+  } catch(e) {
+    console.warn('API offline'); setApiStatus(false,'Sin conexión al servidor');
+    snapshotsCache = JSON.parse(localStorage.getItem('mel_snaps_fallback')||'[]');
+  }
+}
+
+function openSnapshotModal(){
+  if(!persons.length){ showToast('Carga un Excel primero','error'); return; }
+  const now=new Date(), start=new Date(now);
+  start.setDate(now.getDate()-now.getDay()+1);
+  const end=new Date(start); end.setDate(start.getDate()+6);
+  const fmt=d=>d.toLocaleDateString('es-CL',{day:'numeric',month:'short'});
+  document.getElementById('snapLabel').value=`${fmt(start)} – ${fmt(end)} ${now.getFullYear()}`;
+  const ac=persons.filter(p=>isAcreditado(p.estatus)).length;
+  const habAct=persons.filter(p=>p.estatus==='Habilitado - Actualizar Examen').length;
+  const habPost=persons.filter(p=>p.estatus==='Habilitado - Postular').length;
+  const na=persons.filter(p=>isNoAcreditado(p.estatus)).length;
+  const prog=persons.filter(p=>isNoAcreditado(p.estatus)&&p.progress.pct!==null);
+  const avg=prog.length?Math.round(prog.reduce((s,p)=>s+p.progress.pct,0)/prog.length):null;
+  document.getElementById('snapPreview').innerHTML=`<strong>Vista previa:</strong> ${persons.length} trabajadores · ${ac} Acreditados · ${habAct} Hab.Act.Exam · ${habPost} Hab.Postular · ${na} No Acreditados${avg!==null?` · Avance: ${avg}%`:''}`;
+  document.getElementById('snapModal').style.display='flex';
+}
+
+function closeModal(){ document.getElementById('snapModal').style.display='none'; }
+
+async function saveSnapshot(){
+  const label=document.getElementById('snapLabel').value.trim();
+  if(!label){ alert('Ingresa una etiqueta'); return; }
+  const btn=document.querySelector('#snapModal .btn-success');
+  btn.textContent='Guardando…'; btn.disabled=true;
+
+  const noAcreds=persons.filter(p=>isNoAcreditado(p.estatus));
+  const prog=noAcreds.filter(p=>p.progress.pct!==null);
+  const avgProgress=prog.length?Math.round(prog.reduce((s,p)=>s+p.progress.pct,0)/prog.length):null;
+  const cargos=[...new Set(persons.map(p=>p.cargo))].sort();
+  const byCargo=cargos.map(c=>{
+    const ws=persons.filter(p=>p.cargo===c);
+    const noA=ws.filter(p=>isNoAcreditado(p.estatus));
+    const na=noA.filter(p=>p.progress.pct!==null);
+    const items=buildBlockerAnalysis(noA)
+      .sort((a,b)=>PROG_LABELS.indexOf(a.label)-PROG_LABELS.indexOf(b.label))
+      .map(it=>({label:it.label,done:it.done,missing:it.missing,pending:it.pending,active:it.active,pct:it.pct}));
+    const workers=ws.map(w=>({nombre:w.nombre,rut:w.rut,estatus:w.estatus,
+      pct:w.progress.pct,done:w.progress.done,total:w.progress.total,detail:[...w.progress.detail]}));
+    return{cargo:c,total:ws.length,
+      acreditados:ws.filter(p=>isAcreditado(p.estatus)).length,
+      habAct:ws.filter(p=>p.estatus==='Habilitado - Actualizar Examen').length,
+      habPost:ws.filter(p=>p.estatus==='Habilitado - Postular').length,
+      habilitados:ws.filter(p=>isHabilitado(p.estatus)).length,
+      noAcreditados:noA.length,
+      avgProgress:na.length?Math.round(na.reduce((s,p)=>s+p.progress.pct,0)/na.length):null,items,workers};
+  });
+
+  const snap={id:Date.now().toString(),label,date:new Date().toISOString(),faena:'MEL',
+    summary:{total:persons.length,
+      acreditados:persons.filter(p=>isAcreditado(p.estatus)).length,
+      habAct:persons.filter(p=>p.estatus==='Habilitado - Actualizar Examen').length,
+      habPost:persons.filter(p=>p.estatus==='Habilitado - Postular').length,
+      habilitados:persons.filter(p=>isHabilitado(p.estatus)).length,
+      noAcreditados:noAcreds.length,avgProgress},byCargo};
+  try {
+    await apiPost('/api/snapshots',snap);
+    showToast('Snapshot guardado — visible para todos ✓');
+  } catch(e) {
+    const local=JSON.parse(localStorage.getItem('mel_snaps_fallback')||'[]');
+    local.push(snap); localStorage.setItem('mel_snaps_fallback',JSON.stringify(local));
+    showToast('Guardado localmente (servidor no disponible)','warn');
+  }
+  btn.textContent='Guardar'; btn.disabled=false;
+  closeModal();
+  await loadSnapshotsFromAPI();
+  renderSemanal();
+}
+
+async function deleteSnapshot(id){
+  if(!confirm('¿Eliminar este snapshot? Se borrará para todos.')) return;
+  try { await apiDelete(`/api/snapshots/${id}`); }
+  catch(e){
+    const local=JSON.parse(localStorage.getItem('mel_snaps_fallback')||'[]');
+    localStorage.setItem('mel_snaps_fallback',JSON.stringify(local.filter(s=>s.id!==id)));
+  }
+  await loadSnapshotsFromAPI(); renderSemanal();
+}
+
+function renderSemanal(){
+  const snaps=snapshotsCache;
+  document.getElementById('snapshotsEmpty').style.display=snaps.length?'none':'block';
+  if(snaps.length){
+    let html=`<div class="cargo-section" style="overflow:auto"><table class="snapshot-table">
+      <thead><tr><th>Semana</th><th>Guardado</th><th>Total</th><th>Acreditados</th><th>Hab.Act.Exam</th><th>Hab.Postular</th><th>No Acreditados</th><th>Avance prom.</th><th></th></tr></thead><tbody>`;
+    for(let i=snaps.length-1;i>=0;i--){
+      const s=snaps[i], prev=i>0?snaps[i-1]:null;
+      const delta=(field,pct)=>{
+        if(!prev) return '';
+        const cur=s.summary[field]??0, prv=prev.summary[field]??0;
+        const d=cur-prv;
+        if(d===0) return`<span class="delta-eq">—</span>`;
+        return d>0?`<span class="delta-up">▲${Math.abs(d)}${pct?'%':''}</span>`:`<span class="delta-down">▼${Math.abs(d)}${pct?'%':''}</span>`;
+      };
+      html+=`<tr>
+        <td><strong>${s.label}</strong></td>
+        <td style="color:var(--text2);font-size:12px">${new Date(s.date).toLocaleString('es-CL',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'})}</td>
+        <td>${s.summary.total}</td>
+        <td>${s.summary.acreditados} ${delta('acreditados',false)}</td>
+        <td>${s.summary.habAct??s.summary.habilitados??'—'} ${delta('habAct',false)}</td>
+        <td>${s.summary.habPost??'—'} ${delta('habPost',false)}</td>
+        <td>${s.summary.noAcreditados} ${delta('noAcreditados',false)}</td>
+        <td>${s.summary.avgProgress!==null&&s.summary.avgProgress!==undefined?s.summary.avgProgress+'%':'—'} ${delta('avgProgress',true)}</td>
+        <td><button class="btn btn-outline btn-sm" onclick="deleteSnapshot('${s.id}')">✕</button></td>
+      </tr>`;
+    }
+    html+='</tbody></table></div>';
+    document.getElementById('snapshotsHistory').innerHTML=html;
+  } else { document.getElementById('snapshotsHistory').innerHTML=''; }
+
+  const selA=document.getElementById('compareA'), selB=document.getElementById('compareB');
+  const prevA=selA.value, prevB=selB.value;
+  const opts='<option value="">— Seleccionar —</option>'+snaps.map(s=>`<option value="${s.id}">${s.label}</option>`).join('');
+  selA.innerHTML=opts; selB.innerHTML=opts;
+  if(prevA) selA.value=prevA; if(prevB) selB.value=prevB;
+  if(!selA.value&&snaps.length>=2) selA.value=snaps[snaps.length-2].id;
+  if(!selB.value&&snaps.length>=1) selB.value=snaps[snaps.length-1].id;
+  renderComparison();
+}
+
+function renderComparison(){
+  const snaps=snapshotsCache;
+  const idA=document.getElementById('compareA').value, idB=document.getElementById('compareB').value;
+  if(!idA||!idB||idA===idB){
+    document.getElementById('comparisonArea').innerHTML='<div style="color:var(--text2);font-size:13px;padding:1rem">Selecciona dos períodos distintos para comparar.</div>';
+    if(compareChart){compareChart.destroy();compareChart=null;} return;
+  }
+  const sA=snaps.find(s=>s.id===idA), sB=snaps.find(s=>s.id===idB);
+  if(!sA||!sB) return;
+  const metricDiff=(a,b,inv=false)=>{const d=b-a;if(d===0)return'<span class="delta-eq">sin cambio</span>';const up=inv?d<0:d>0;return up?`<span class="delta-up">▲ +${Math.abs(d)}</span>`:`<span class="delta-down">▼ -${Math.abs(d)}</span>`;};
+
+  let html=`<div class="compare-cards">
+    <div class="compare-card"><div class="compare-card-title">${sA.label}</div>
+      ${mc('Total',sA.summary.total,'')}
+      ${mc('Acreditados',sA.summary.acreditados,'')}
+      ${mc('Hab. Actualizar Examen',sA.summary.habAct??sA.summary.habilitados??'—','')}
+      ${mc('Hab. Postular',sA.summary.habPost??'—','')}
+      ${mc('No Acreditados',sA.summary.noAcreditados,'')}
+      ${mc('Avance promedio',sA.summary.avgProgress!==null&&sA.summary.avgProgress!==undefined?sA.summary.avgProgress+'%':'—','')}
+    </div>
+    <div class="compare-card"><div class="compare-card-title">${sB.label}</div>
+      ${mc('Total',sB.summary.total,metricDiff(sA.summary.total,sB.summary.total))}
+      ${mc('Acreditados',sB.summary.acreditados,metricDiff(sA.summary.acreditados,sB.summary.acreditados))}
+      ${mc('Hab. Actualizar Examen',sB.summary.habAct??sB.summary.habilitados??'—',metricDiff(sA.summary.habAct??sA.summary.habilitados??0,sB.summary.habAct??sB.summary.habilitados??0))}
+      ${mc('Hab. Postular',sB.summary.habPost??'—',sA.summary.habPost!=null&&sB.summary.habPost!=null?metricDiff(sA.summary.habPost,sB.summary.habPost):'')}
+      ${mc('No Acreditados',sB.summary.noAcreditados,metricDiff(sA.summary.noAcreditados,sB.summary.noAcreditados,true))}
+      ${mc('Avance promedio',sB.summary.avgProgress!==null&&sB.summary.avgProgress!==undefined?sB.summary.avgProgress+'%':'—',sA.summary.avgProgress!=null&&sB.summary.avgProgress!=null?metricDiff(sA.summary.avgProgress,sB.summary.avgProgress):'')}
+    </div></div>`;
+
+  const allCargos=[...new Set([...sA.byCargo.map(c=>c.cargo),...sB.byCargo.map(c=>c.cargo)])].sort();
+  const dataA=allCargos.map(c=>{const r=sA.byCargo.find(x=>x.cargo===c);return r?.avgProgress??null});
+  const dataB=allCargos.map(c=>{const r=sB.byCargo.find(x=>x.cargo===c);return r?.avgProgress??null});
+  const chartH=Math.max(250,allCargos.length*45+80);
+  html+=`<div class="chart-card" style="margin-bottom:1rem"><div class="chart-title">Avance por cargo</div>
+    <div style="margin-bottom:8px;display:flex;gap:16px;font-size:12px">
+      <span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:2px;background:#3498DB;display:inline-block"></span>${sA.label}</span>
+      <span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:2px;background:#E8A020;display:inline-block"></span>${sB.label}</span>
+    </div>
+    <div style="position:relative;height:${chartH}px"><canvas id="compareChartCanvas" role="img" aria-label="Comparación por cargo"></canvas></div>
+  </div>`;
+
+  html+=`<div style="font-size:13px;font-weight:500;color:var(--text2);margin-bottom:8px">▼ Detalle por cargo — qué cambió y quién lo hizo</div>`;
+  for(const cargo of allCargos){
+    const cA=sA.byCargo.find(x=>x.cargo===cargo), cB=sB.byCargo.find(x=>x.cargo===cargo);
+    if(!cA||!cB||(cA.avgProgress===null&&cB.avgProgress===null)) continue;
+    const progDelta=cA.avgProgress!==null&&cB.avgProgress!==null?cB.avgProgress-cA.avgProgress:null;
+    const dHtml=progDelta===null?'':progDelta>0?`<span class="delta-up">▲ +${progDelta}%</span>`:progDelta<0?`<span class="delta-down">▼ ${progDelta}%</span>`:'<span class="delta-eq">sin cambio</span>';
+    const workersA=cA.workers||[], workersB=cB.workers||[];
+    const diffs=[];
+    for(const wB of workersB){
+      const wA=workersA.find(w=>w.rut===wB.rut);
+      if(wB.estatus!=='No acreditado'&&(!wA||wA.estatus==='No acreditado')){
+        diffs.push({nombre:wB.nombre,tipo:'graduado',a:wB.estatus,items:[]});
+      } else if(wB.estatus==='No acreditado'&&wA&&wA.estatus==='No acreditado'){
+        const completed=PROG_LABELS.filter((_,i)=>wA.detail?.[i]!=='ok'&&wB.detail?.[i]==='ok');
+        const pctChange=(wB.pct??0)-(wA.pct??0);
+        if(completed.length>0||pctChange>0) diffs.push({nombre:wB.nombre,tipo:'avance',pctA:wA.pct,pctB:wB.pct,pctChange,items:completed});
+      }
+    }
+    for(const wB of workersB){ if(!workersA.find(w=>w.rut===wB.rut)) diffs.push({nombre:wB.nombre,tipo:'nuevo',estatus:wB.estatus,items:[]}); }
+
+    const secId='cmp-'+encodeURIComponent(cargo);
+    html+=`<div class="cargo-compare-section" id="${secId}">
+      <div class="cargo-compare-header" onclick="toggleCompare('${secId}')">
+        <div style="display:flex;align-items:center;gap:10px">
+          <span style="font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:15px">${cargo}</span>
+          <span class="tag">${cA.noAcreditados??'?'} → ${cB.noAcreditados??'?'} No Acred.</span>
+          ${diffs.length?`<span class="badge badge-orange">${diffs.length} movimiento${diffs.length>1?'s':''}</span>`:''}
+        </div>
+        <div style="display:flex;align-items:center;gap:12px">
+          <span style="font-size:13px;color:var(--text2)">${cA.avgProgress!==null?cA.avgProgress+'%':'—'} → ${cB.avgProgress!==null?cB.avgProgress+'%':'—'}</span>
+          ${dHtml}<span style="color:var(--text3);font-size:11px">▼</span>
+        </div>
+      </div>
+      <div class="cargo-compare-body">`;
+
+    if(diffs.length){
+      html+=`<div style="margin-bottom:1rem"><div style="font-size:11px;color:var(--amber);font-weight:500;margin-bottom:8px;display:flex;align-items:center;gap:6px"><span style="width:8px;height:8px;border-radius:50%;background:var(--amber);display:inline-block"></span>Trabajadores que influyeron en el cambio</div>`;
+      for(const wd of diffs){
+        if(wd.tipo==='graduado'){
+          html+=`<div style="display:flex;align-items:center;gap:10px;padding:8px 10px;margin-bottom:4px;border-radius:6px;background:rgba(39,174,96,0.1);border:1px solid rgba(39,174,96,0.2)">
+            <span style="font-size:16px">🎉</span>
+            <div><div style="font-weight:500;font-size:13px">${wd.nombre}</div><div style="font-size:11px;color:#4ade80">Pasó de No Acreditado → <strong>${wd.a}</strong></div></div></div>`;
+        } else if(wd.tipo==='avance'){
+          html+=`<div style="display:flex;align-items:flex-start;gap:10px;padding:8px 10px;margin-bottom:4px;border-radius:6px;background:rgba(52,152,219,0.08);border:1px solid rgba(52,152,219,0.15)">
+            <span style="font-size:16px;padding-top:2px">↑</span>
+            <div><div style="display:flex;align-items:center;gap:8px">
+              <span style="font-weight:500;font-size:13px">${wd.nombre}</span>
+              <span style="font-size:11px;color:#60a5fa">${wd.pctA??'?'}% → ${wd.pctB??'?'}%${wd.pctChange>0?` <strong class="delta-up">▲+${wd.pctChange}%</strong>`:''}</span>
+            </div>
+            ${wd.items.length?`<div style="font-size:11px;color:var(--text2);margin-top:3px">Completó: ${wd.items.map(i=>`<span style="background:rgba(39,174,96,0.15);color:#4ade80;padding:1px 6px;border-radius:4px;margin-right:3px;font-size:10px">${i}</span>`).join('')}</div>`:''}
+            </div></div>`;
+        } else {
+          html+=`<div style="display:flex;align-items:center;gap:10px;padding:8px 10px;margin-bottom:4px;border-radius:6px;background:rgba(100,120,140,0.1);border:1px solid var(--border)">
+            <span>+</span><div><div style="font-weight:500;font-size:13px">${wd.nombre}</div><div style="font-size:11px;color:var(--text2)">Nuevo ingreso · ${wd.estatus}</div></div></div>`;
+        }
+      }
+      html+=`</div>`;
+    } else if(workersA.length&&workersB.length){
+      html+=`<div style="color:var(--text2);font-size:12px;padding:8px 0;margin-bottom:12px">Sin movimientos individuales en este período.</div>`;
+    }
+
+    const itemsA=cA.items||[], itemsB=cB.items||[];
+    if(itemsA.length&&itemsB.length){
+      const changes=PROG_LABELS.map(lbl=>{
+        const iA=itemsA.find(x=>x.label===lbl)||{done:0,active:0,pct:0};
+        const iB=itemsB.find(x=>x.label===lbl)||{done:0,active:0,pct:0};
+        return{lbl,doneA:iA.done,doneB:iB.done,activeA:iA.active,activeB:iB.active,pctA:iA.pct,pctB:iB.pct,delta:iB.done-iA.done};
+      });
+      html+=`<table class="item-delta-table"><thead><tr><th>Ítem</th><th>${sA.label}</th><th>${sB.label}</th><th>Cambio</th><th>% A → B</th></tr></thead><tbody>`;
+      for(const c of changes){
+        const rowBg=c.delta>0?'rgba(39,174,96,0.06)':c.delta<0?'rgba(231,76,60,0.06)':'';
+        const dCell=c.delta===0?'<span style="color:var(--text3)">—</span>':c.delta>0?`<span class="delta-up">▲ +${c.delta} persona${Math.abs(c.delta)>1?'s':''}</span>`:`<span class="delta-down">▼ ${c.delta}</span>`;
+        const pCell=c.pctA===c.pctB?`<span style="color:var(--text3)">${c.pctB}%</span>`:`${c.pctA}% → <strong style="color:${c.pctB>c.pctA?'#4ade80':'#f87171'}">${c.pctB}%</strong>`;
+        html+=`<tr style="background:${rowBg}"><td style="font-weight:500">${c.lbl}</td><td style="color:var(--text2)">${c.doneA}/${c.activeA||'?'}</td><td style="color:var(--text2)">${c.doneB}/${c.activeB||'?'}</td><td>${dCell}</td><td>${pCell}</td></tr>`;
+      }
+      html+='</tbody></table>';
+    }
+    html+=`</div></div>`;
+  }
+
+  document.getElementById('comparisonArea').innerHTML=html;
+  if(compareChart) compareChart.destroy();
+  compareChart=new Chart(document.getElementById('compareChartCanvas'),{
+    type:'bar',
+    data:{labels:allCargos,datasets:[
+      {label:sA.label,data:dataA,backgroundColor:'rgba(52,152,219,0.7)',borderWidth:0,borderRadius:3},
+      {label:sB.label,data:dataB,backgroundColor:'rgba(232,160,32,0.8)',borderWidth:0,borderRadius:3}
+    ]},
+    options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,
+      scales:{x:{min:0,max:100,grid:{color:'rgba(255,255,255,0.05)'},ticks:{color:'#8899AA',callback:v=>v+'%'}},
+        y:{grid:{display:false},ticks:{color:'#8899AA',font:{size:11}}}},
+      plugins:{legend:{display:false}}}
+  });
+}
+
+function mc(label,val,delta){ return`<div class="compare-metric"><span class="compare-metric-label">${label}</span><span style="display:flex;align-items:center;gap:8px"><span class="compare-metric-val">${val}</span>${delta}</span></div>`; }
+function toggleCompare(id){ document.getElementById(id).classList.toggle('open'); }
+
+// ─────────────────────────────────────────────────────────
+//  TABS
+// ─────────────────────────────────────────────────────────
+const EXCEL_TABS=['resumen','cargo','sar'];
+function switchTab(tab){
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.tab-pane').forEach(p=>p.classList.remove('active'));
+  const btn=document.querySelector(`.tab-btn[data-tab="${tab}"]`);
+  if(btn) btn.classList.add('active');
+  const pane=document.getElementById('tab-'+tab);
+  if(pane) pane.classList.add('active');
+  if(EXCEL_TABS.includes(tab)&&!excelLoaded){
+    const tCap=tab.charAt(0).toUpperCase()+tab.slice(1);
+    const up=document.getElementById('noExcel'+tCap);
+    const ct=document.getElementById(tab+'Content');
+    if(up) up.style.display='block';
+    if(ct) ct.style.display='none';
+  }
+  if(tab==='semanal') renderSemanal();
+}
+document.querySelectorAll('.tab-btn').forEach(btn=>btn.addEventListener('click',()=>switchTab(btn.dataset.tab)));
+
+// ─────────────────────────────────────────────────────────
+//  TOAST
+// ─────────────────────────────────────────────────────────
+function showToast(msg,type='success'){
+  const t=document.getElementById('toast');
+  t.textContent=msg;
+  t.style.borderColor=type==='error'?'var(--red)':type==='warn'?'var(--orange)':'var(--green)';
+  t.style.color=type==='error'?'#f87171':type==='warn'?'#fbbf24':'var(--green)';
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),4000);
+}
+
+// ─────────────────────────────────────────────────────────
+//  INIT
+// ─────────────────────────────────────────────────────────
+window.addEventListener('load', async()=>{
+  // Hide analysis content until Excel loaded
+  ['Resumen','Cargo','Sar'].forEach(t=>{
+    const ct=document.getElementById(t.toLowerCase()+'Content');
+    if(ct) ct.style.display='none';
+  });
+  // Always start on Seguimiento Semanal
+  switchTab('semanal');
+  // Load shared data from server
+  await loadSnapshotsFromAPI();
+  await loadCurrentData();
+  renderSemanal();
+});
+</script>
+</body>
+</html>
